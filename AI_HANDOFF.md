@@ -1,6 +1,6 @@
 # AI Handoff — BASEIO (Local AI Hub)
 
-_Last updated: 2026-11-21 (Day 1 session, after chat/attachments update)_
+_Last updated: 2026-11-21 (Day 1 session, after image generation)_
 
 Read this first. It is the single source of truth for where the project is.
 Also read: ARCHITECTURE.md (how it works), DEVELOPMENT.md (commands, gotchas,
@@ -24,7 +24,8 @@ Remaining Day 3 work: recovery/offline polish and an Ollama-bundling decision.
 | Streaming chat (ChatGPT-style UI, markdown, history, stop, "Thinking…", model switch per chat) | `commands.rs::send_message`, `ollama.rs::chat` | `ChatPage.tsx`, `Composer.tsx`, `Markdown.tsx` | e2e chat with qwen3:0.6b |
 | Attachments: images → vision models; PDF, DOCX, text/code → extracted text | `attachments.rs`, `db.rs` (migration v2) | `Composer.tsx` | unit tests + `cargo run --example doc_chat -- notes.md` (real model answered from file) |
 | Model capabilities (text/vision/thinking) via `/api/show` | `ollama.rs::show` | model picker, composer warnings | unit test + live gemma3:1b → ["completion"] |
-| Unsupported requests (image/video/audio generation) explained, not mis-recommended | `intent.rs::detect_unsupported` | `AskBox.tsx` | unit tests |
+| Special requests: image generation → Create page; video/audio explained as unavailable | `intent.rs::detect_special` | `AskBox.tsx` | unit tests |
+| Local image generation (stable-diffusion.cpp; verified engine + model downloads; progress; gallery; export) | `imagegen.rs`, `download.rs`, `image_commands.rs`, `db.rs` (migration v3) | `pages/CreatePage.tsx`, `lib/imageJobs.tsx` | `cargo run --example imagegen_e2e` — SD 1.5 on Iris Xe via Vulkan, 512×512/20 steps in ~240 s |
 | Natural-language requests (rule-based, no side effects) | `intent.rs`, `commands.rs::interpret_request` | `components/AskBox.tsx` | unit tests |
 | Windows installers | `tauri.conf.json` bundle targets nsis+msi | — | `npm run tauri build` OK |
 
@@ -33,7 +34,9 @@ Remaining Day 3 work: recovery/offline polish and an Ollama-bundling decision.
 - `src-tauri/src/lib.rs` — app setup, state, command registration
 - `src/lib/api.ts` + `src/lib/types.ts` — frontend mirror of the API; keep in sync with Rust serde types
 - `src-tauri/catalog/models.json` — curated catalogue (sizes approximate by design; exact size fetched at install)
-- `src-tauri/examples/{hwinfo,e2e,doc_chat}.rs` — real-hardware / real-Ollama checks
+- `src-tauri/examples/{hwinfo,e2e,doc_chat,imagegen_e2e}.rs` — real-hardware / real-Ollama / real image checks
+- `src-tauri/catalog/image_models.json` — image engine build pins + image models (sha256 per file)
+- Image data: `%APPDATA%m.baseio.desktop{engines,image-models,images}`
 - `src-tauri/src/attachments.rs` — file reading/extraction (limits, allow-list)
 
 ## Commands
@@ -50,7 +53,9 @@ npm run tauri build                  # → src-tauri/target/release/bundle/{nsis
 - `install_model` re-checks disk space using the catalogue estimate, not the
   verified size from `prepare_install` (fine in practice, minor).
 - Image attachments are untested end-to-end: no vision model is installed on the dev machine (needs e.g. gemma3:4b, 3.3 GB).
-- Image/video generation not supported (Ollama image models are macOS-only; see docs/DECISIONS.md D8).
+- Z-Image Turbo image model is in the catalogue but NOT yet run (6 GB download); shown as "Not yet tested".
+- Video generation not exposed (needs 12 GB+ NVIDIA GPU; untestable here). See D11.
+- Image generation is slow on CPU/integrated GPUs (~4 min per 512×512 image on the dev laptop).
 - Pasting images from the clipboard is not supported (paperclip or drag & drop only).
 - Code blocks have no syntax highlighting.
 - Integrated GPUs (Intel Iris Xe etc.) are treated as CPU-only for
@@ -84,7 +89,8 @@ resumes partial blobs.
 |---|---|
 | `npm run typecheck` | ✅ pass |
 | `npm test` (4 tests) | ✅ pass |
-| `cargo test` (41 tests, 0 warnings) | ✅ pass |
+| `cargo test` (49 tests, 0 warnings) | ✅ pass |
+| `cargo run --example imagegen_e2e` (real image) | ✅ pass |
 | `cargo run --example e2e` (real Ollama 0.40.16) | ✅ pass |
 | `npm run tauri dev` | ✅ starts, DB created |
 | `npm run tauri build` | ✅ NSIS 2.9 MB + MSI 3.9 MB |

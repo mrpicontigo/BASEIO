@@ -2,6 +2,9 @@ pub mod attachments;
 pub mod catalog;
 mod commands;
 pub mod db;
+pub mod download;
+mod image_commands;
+pub mod imagegen;
 pub mod error;
 pub mod hardware;
 pub mod intent;
@@ -25,6 +28,8 @@ pub fn run() {
                 db,
                 installs: Default::default(),
                 chats: Default::default(),
+                image_gen: Default::default(),
+                image_paths: imagegen::Paths { root: dir.clone() },
             });
             Ok(())
         })
@@ -55,6 +60,17 @@ pub fn run() {
             commands::model_info,
             commands::read_attachment,
             commands::attachment_extensions,
+            image_commands::image_overview,
+            image_commands::image_license_accepted,
+            image_commands::install_image_model,
+            image_commands::cancel_image_install,
+            image_commands::delete_image_model,
+            image_commands::generate_image,
+            image_commands::cancel_image_generation,
+            image_commands::list_generated_images,
+            image_commands::image_data,
+            image_commands::export_image,
+            image_commands::delete_generated_image,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -18,6 +18,7 @@
 - [x] Chat attachments: images (vision models), PDF, DOCX, text/code
 - [x] Model capability detection (`/api/show`) + text-only warnings
 - [x] ChatGPT/Claude-style chat UI with markdown
+- [x] Local image generation (stable-diffusion.cpp, Create page, gallery, verified downloads)
 
 ## Day 3 — Intelligence & release
 - [ ] Natural-language model requests ("I want something for coding on my laptop")
@@ -33,6 +34,8 @@
 - Hugging Face gated-model handling with user token
 - Model detail page, prompt presets, system prompts per chat
 - Syntax highlighting in code blocks
-- Image generation (blocked: Ollama image models are macOS-only; see D8)
+- Verify Z-Image Turbo end-to-end (6 GB download; marked "Not yet tested" in the app)
+- Video generation for capable NVIDIA GPUs (engine supports Wan/LTX; see D11)
+- CUDA engine build for NVIDIA GPUs (faster than Vulkan)
 - GPU free-VRAM via NVML/ADLX; tokens/sec benchmark per model
 - Additional runtimes (llama.cpp server, LM Studio)

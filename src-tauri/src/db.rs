@@ -44,7 +44,46 @@ const MIGRATIONS: &[&str] = &[
         truncated INTEGER NOT NULL DEFAULT 0
      );
      CREATE INDEX idx_attachments_msg ON attachments(message_id);",
+    // v3: generated images (files live in <app data>/images)
+    "CREATE TABLE generated_images (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        model_id TEXT NOT NULL,
+        prompt TEXT NOT NULL,
+        negative_prompt TEXT,
+        width INTEGER NOT NULL,
+        height INTEGER NOT NULL,
+        steps INTEGER NOT NULL,
+        seed INTEGER NOT NULL,
+        file_name TEXT NOT NULL,
+        duration_ms INTEGER NOT NULL,
+        created_at INTEGER NOT NULL
+     );",
 ];
+
+#[derive(Debug, Clone, Serialize)]
+pub struct GeneratedImage {
+    pub id: i64,
+    pub model_id: String,
+    pub prompt: String,
+    pub negative_prompt: Option<String>,
+    pub width: u32,
+    pub height: u32,
+    pub steps: u32,
+    pub seed: i64,
+    pub file_name: String,
+    pub duration_ms: i64,
+    pub created_at: i64,
+}
+
+fn row_to_image(r: &rusqlite::Row) -> rusqlite::Result<GeneratedImage> {
+    Ok(GeneratedImage {
+        id: r.get(0)?, model_id: r.get(1)?, prompt: r.get(2)?, negative_prompt: r.get(3)?,
+        width: r.get(4)?, height: r.get(5)?, steps: r.get(6)?, seed: r.get(7)?,
+        file_name: r.get(8)?, duration_ms: r.get(9)?, created_at: r.get(10)?,
+    })
+}
+
+const IMAGE_COLS: &str = "id, model_id, prompt, negative_prompt, width, height, steps, seed, file_name, duration_ms, created_at";
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Conversation {
@@ -214,6 +253,41 @@ impl Db {
         Ok(msgs)
     }
 
+    #[allow(clippy::too_many_arguments)]
+    pub fn add_image(
+        &self, model_id: &str, prompt: &str, negative: Option<&str>, width: u32, height: u32,
+        steps: u32, seed: i64, file_name: &str, duration_ms: i64,
+    ) -> AppResult<GeneratedImage> {
+        let c = self.conn();
+        let t = now();
+        c.execute(
+            "INSERT INTO generated_images (model_id, prompt, negative_prompt, width, height, steps, seed, file_name, duration_ms, created_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+            params![model_id, prompt, negative, width, height, steps, seed, file_name, duration_ms, t],
+        )?;
+        let id = c.last_insert_rowid();
+        Ok(c.query_row(&format!("SELECT {IMAGE_COLS} FROM generated_images WHERE id = ?1"), [id], row_to_image)?)
+    }
+
+    pub fn list_images(&self) -> AppResult<Vec<GeneratedImage>> {
+        let c = self.conn();
+        let mut st = c.prepare(&format!("SELECT {IMAGE_COLS} FROM generated_images ORDER BY id DESC"))?;
+        let rows = st.query_map([], row_to_image)?;
+        Ok(rows.collect::<Result<_, _>>()?)
+    }
+
+    pub fn get_image(&self, id: i64) -> AppResult<Option<GeneratedImage>> {
+        Ok(self
+            .conn()
+            .query_row(&format!("SELECT {IMAGE_COLS} FROM generated_images WHERE id = ?1"), [id], row_to_image)
+            .optional()?)
+    }
+
+    pub fn delete_image(&self, id: i64) -> AppResult<()> {
+        self.conn().execute("DELETE FROM generated_images WHERE id = ?1", [id])?;
+        Ok(())
+    }
+
     pub fn accept_license(&self, license_key: &str, model_tag: &str) -> AppResult<()> {
         self.conn().execute(
             "INSERT OR REPLACE INTO license_acceptances (license_key, model_tag, accepted_at) VALUES (?1, ?2, ?3)",
@@ -267,6 +341,16 @@ mod tests {
         db.delete_conversation(c.id).unwrap();
         let n: i64 = db.conn().query_row("SELECT COUNT(*) FROM attachments", [], |r| r.get(0)).unwrap();
         assert_eq!(n, 0);
+    }
+
+    #[test]
+    fn images_roundtrip() {
+        let db = Db::open_in_memory().unwrap();
+        let i = db.add_image("sd15-q4", "a cat", None, 512, 512, 20, 42, "a.png", 1000).unwrap();
+        assert_eq!(db.list_images().unwrap().len(), 1);
+        assert_eq!(db.get_image(i.id).unwrap().unwrap().file_name, "a.png");
+        db.delete_image(i.id).unwrap();
+        assert!(db.get_image(i.id).unwrap().is_none());
     }
 
     #[test]

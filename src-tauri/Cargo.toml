@@ -21,13 +21,14 @@ serde_json = "1"
 sysinfo = "0.37"
 thiserror = "2"
 reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"] }
-tokio = { version = "1", features = ["sync", "macros", "time"] }
+tokio = { version = "1", features = ["sync", "macros", "time", "process", "io-util"] }
 futures-util = { version = "0.3", default-features = false, features = ["std"] }
 rusqlite = { version = "0.37", features = ["bundled"] }
 tauri-plugin-dialog = "2"
 pdf-extract = "0.9"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 base64 = "0.22"
+sha2 = "0.10"
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.61", features = ["Win32_Graphics_Dxgi", "Win32_Foundation"] }

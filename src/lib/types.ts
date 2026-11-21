@@ -87,6 +87,34 @@ export type ChatEvent =
 export interface Intent {
   use_case: string | null; preference: "fast" | "best" | "balanced"; commercial_use_required: boolean;
   max_size_bytes: number | null; mentioned_models: string[]; understood: string[];
-  unsupported: { capability: string; message: string } | null;
+  special: { capability: string; available: boolean; message: string } | null;
 }
 export interface RequestInterpretation { intent: Intent; recommendations: Recommendation[] }
+
+// ---- image generation
+export interface ImageModelFile { role: string; repo: string; path: string; size: number; sha256: string }
+export interface ImageModel {
+  id: string; name: string; publisher: string; description: string; quality: "basic" | "high" | string; verified: boolean;
+  license: License; homepage: string; files: ImageModelFile[];
+  defaults: { width: number; height: number; steps: number; cfg_scale: number };
+  sizes: [number, number][];
+}
+export interface ImageFit { tier: Tier; estimated_memory_bytes: number; reasons: string[] }
+export interface ImageModelStatus { model: ImageModel; installed: boolean; download_bytes: number; fit: ImageFit }
+export interface ImageOverview {
+  engine_installed: boolean; engine_variant: string | null; engine_download_bytes: number;
+  engine_license: License; models: ImageModelStatus[];
+}
+export type ImageInstallEvent =
+  | { event: "status"; message: string }
+  | { event: "progress"; completed: number; total: number }
+  | { event: "done" };
+export type GenEvent = { event: "status"; message: string } | { event: "step"; step: number; total: number };
+export interface GenRequest {
+  model_id: string; prompt: string; negative_prompt?: string | null; width: number; height: number;
+  steps?: number | null; seed?: number | null;
+}
+export interface GeneratedImage {
+  id: number; model_id: string; prompt: string; negative_prompt: string | null; width: number; height: number;
+  steps: number; seed: number; file_name: string; duration_ms: number; created_at: number;
+}

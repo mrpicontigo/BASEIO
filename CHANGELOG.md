@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 ### Added
+- Create page: local image generation with stable-diffusion.cpp (Vulkan GPU or CPU), verified engine and model downloads, live step progress, stop, gallery, save as PNG. Models: Stable Diffusion 1.5 (tested), Z-Image Turbo (not yet tested).
+- Composer focus outline fix.
 - Project scaffold (Tauri 2, React 19, TypeScript, Tailwind 4, Vitest).
 - Hardware detection: CPU (brand, cores, clock, AVX/AVX2/AVX-512/FMA), RAM,
   GPUs via DXGI (64-bit VRAM), disks (SSD/HDD, free space), OS.

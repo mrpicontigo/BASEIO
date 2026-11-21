@@ -1,7 +1,8 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
 import type {
   AppError, Catalog, CatalogAssessment, ChatEvent, Conversation, HardwareInfo, InstallPlan,
-  Attachment, InstalledModel, Message, ModelInfo, PullEvent, Recommendation, RequestInterpretation, RunningModel, RuntimeStatus,
+  Attachment, GenEvent, GenRequest, GeneratedImage, ImageInstallEvent, ImageOverview, InstalledModel, Message, ModelInfo,
+  PullEvent, Recommendation, RequestInterpretation, RunningModel, RuntimeStatus,
 } from "./types";
 
 /** Normalise anything thrown by `invoke` into an AppError. */
@@ -59,6 +60,20 @@ export const api = {
   modelInfo: (model: string) => call<ModelInfo>("model_info", { model }),
   readAttachment: (path: string) => call<Attachment>("read_attachment", { path }),
   attachmentExtensions: () => call<string[]>("attachment_extensions"),
+
+  imageOverview: () => call<ImageOverview>("image_overview"),
+  imageLicenseAccepted: (modelId: string) => call<boolean>("image_license_accepted", { modelId }),
+  installImageModel: (modelId: string, acceptLicense: boolean, onEvent: (e: ImageInstallEvent) => void) =>
+    call<void>("install_image_model", { modelId, acceptLicense, onEvent: channel(onEvent) }),
+  cancelImageInstall: (modelId: string) => call<boolean>("cancel_image_install", { modelId }),
+  deleteImageModel: (modelId: string) => call<void>("delete_image_model", { modelId }),
+  generateImage: (request: GenRequest, onEvent: (e: GenEvent) => void) =>
+    call<GeneratedImage>("generate_image", { request, onEvent: channel(onEvent) }),
+  cancelImageGeneration: () => call<boolean>("cancel_image_generation"),
+  listGeneratedImages: () => call<GeneratedImage[]>("list_generated_images"),
+  imageData: (id: number) => call<string>("image_data", { id }),
+  exportImage: (id: number, dest: string) => call<void>("export_image", { id, dest }),
+  deleteGeneratedImage: (id: number) => call<void>("delete_generated_image", { id }),
   cancelChat: (conversationId: number) => call<boolean>("cancel_chat", { conversationId }),
 
   interpretRequest: (text: string) => call<RequestInterpretation>("interpret_request", { text }),

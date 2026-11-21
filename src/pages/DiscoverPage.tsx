@@ -37,7 +37,7 @@ function VariantRow({ v, c, license, installed, onInstall }: RowProps) {
   );
 }
 
-export default function DiscoverPage({ runtime }: { runtime: RuntimeStatus | null }) {
+export default function DiscoverPage({ runtime, onOpenCreate }: { runtime: RuntimeStatus | null; onOpenCreate: () => void }) {
   const [useCase, setUseCase] = useState<string | null>(null);
   const [installing, setInstalling] = useState<string | null>(null);
   const { version } = useInstalls();
@@ -67,7 +67,7 @@ export default function DiscoverPage({ runtime }: { runtime: RuntimeStatus | nul
         </p>
       </header>
 
-      <AskBox installed={installedSet} onInstall={setInstalling} />
+      <AskBox installed={installedSet} onInstall={setInstalling} onOpenCreate={onOpenCreate} />
 
       <div className="flex flex-wrap gap-2">
         {[null, ...USE_CASES].map((u) => (

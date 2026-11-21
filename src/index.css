@@ -37,6 +37,8 @@ body {
 *::-webkit-scrollbar-thumb:hover { background: #2a3b49; }
 
 :focus-visible { outline: 2px solid #22d3ee80; outline-offset: 2px; }
+/* Text fields sit inside containers that already show a focus border. */
+textarea:focus-visible, input[type="text"]:focus-visible, input:not([type]):focus-visible { outline: none; }
 
 /* ---- Backdrop sketches ---- */
 .sketch {

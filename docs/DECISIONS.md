@@ -31,7 +31,7 @@ enough. Revisit if pages grow.
 ## D7 — rusqlite (bundled) over tauri-plugin-sql (2026-11-21)
 Keeps all data access in Rust behind typed commands; no SQL in the webview.
 
-## D8 — No image/video generation yet (2026-11-21)
+## D8 — No image/video generation via Ollama (2026-11-21) — superseded by D11 for images
 Ollama's docs (Jan 2026) state image generation models "currently only work on
 macOS"; models are 13 GB+ with unstated memory needs. It could not be built or
 verified on Windows here, and the project forbids simulated features. The NL
@@ -49,3 +49,17 @@ reports the `vision` capability via `/api/show`.
 
 ## D10 — Markdown via react-markdown + remark-gfm (2026-11-21)
 No raw HTML rendering; links open in the system browser.
+
+## D11 — Image generation via stable-diffusion.cpp (2026-11-21)
+Second runtime alongside Ollama, used only for images. Pinned release
+`master-1106-532d2c1` (Windows Vulkan build for any GPU, CPU build otherwise),
+downloaded from GitHub and verified against the release's published sha256.
+After install, `sd-cli --list-devices` confirms a Vulkan device; if none, the
+CPU build is installed instead. Models are multi-file entries in
+`catalog/image_models.json`, each file with exact size + sha256 from Hugging
+Face LFS metadata; only ungated repos are used. Generation runs `sd-cli.exe`
+with argv built from validated values (prompt is a single argument, size from
+an allow-list, extra args from a 1-item allow-list). Measured on i7-12700H +
+Iris Xe (Vulkan): SD 1.5 Q4_0 512×512, 20 steps ≈ 240 s; 10 steps ≈ 127 s.
+Video (`vid_gen` with Wan/LTX) is supported by the engine but not exposed:
+needs 12 GB+ VRAM and could not be tested here.

@@ -40,4 +40,6 @@ pub struct AppState {
     pub db: Db,
     pub installs: Jobs,
     pub chats: Jobs,
+    pub image_gen: Jobs,
+    pub image_paths: crate::imagegen::Paths,
 }

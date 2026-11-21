@@ -26,7 +26,7 @@ pub fn ollama_models_dir() -> Option<PathBuf> {
         .map(|h| PathBuf::from(h).join(".ollama").join("models"))
 }
 
-async fn detect_hw() -> AppResult<HardwareInfo> {
+pub(crate) async fn detect_hw() -> AppResult<HardwareInfo> {
     tauri::async_runtime::spawn_blocking(hardware::detect)
         .await
         .map_err(|e| AppError::Hardware(format!("detection task failed: {e}")))
