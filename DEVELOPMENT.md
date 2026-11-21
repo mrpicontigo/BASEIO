@@ -31,3 +31,14 @@ npm run tauri build      # release build + NSIS/MSI installers in src-tauri/targ
 - All Tauri commands live in `src-tauri/src/commands.rs`; logic lives in modules.
 - Every model reference passed to the runtime must pass `catalog::is_valid_model_ref`.
 - Never execute shell commands built from user or AI text.
+
+## Dev tools (run from `src-tauri/`)
+- `cargo run --example hwinfo` — prints detected hardware JSON + top recommendations.
+- `cargo run --example e2e -- qwen3:0.6b` — real end-to-end check against Ollama:
+  start → registry size → pull with progress → verify installed → streamed chat.
+  Downloads ~520 MB the first time; re-runs are instant.
+
+## Toolchain notes (this machine)
+- Rust installed with official `rustup-init.exe` (stable-msvc). `~/.cargo/bin`
+  is on PATH only in new terminals; in old ones prefix `$HOME/.cargo/bin`.
+- VS 2022 Build Tools (C++ workload) and Ollama 0.40.16 installed via winget.

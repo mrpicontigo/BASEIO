@@ -11,3 +11,9 @@
   load/unload/delete, approval-based install with verified size, licence
   acceptance, streamed progress, cancel, post-install verification.
 - SQLite storage; streaming local chat with history and stop.
+- Natural-language model requests ("a fast coding model for my laptop").
+- "Thinking…" indicator for reasoning models in chat.
+- Windows installers (NSIS + MSI) via `npm run tauri build`.
+- Dev tools: `cargo run --example hwinfo`, `cargo run --example e2e`.
+### Changed
+- Bundle identifier `com.baseio.app` → `com.baseio.desktop` (macOS conflict warning).

@@ -13,7 +13,7 @@
 - [x] Approval-based install: verified registry size, disk check, licence acceptance
 - [x] Streaming download progress, cancel, post-install verification
 - [x] SQLite persistence; local chat with streaming + stop
-- [ ] End-to-end manual test against a real Ollama install
+- [x] End-to-end test against real Ollama 0.40.16 (`cargo run --example e2e`)
 - [ ] Live search of the Ollama library / Hugging Face GGUF models
 
 ## Day 3 — Intelligence & release

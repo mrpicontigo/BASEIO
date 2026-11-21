@@ -14,6 +14,7 @@ export default function ChatPage({
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
   const [streaming, setStreaming] = useState<string | null>(null);
+  const [thinking, setThinking] = useState(false);
   const [error, setError] = useState<AppError | null>(null);
   const [newModel, setNewModel] = useState("");
   const bottom = useRef<HTMLDivElement>(null);
@@ -55,12 +56,14 @@ export default function ChatPage({
     try {
       await api.sendMessage(active.id, text, (e) => {
         if (e.event === "token") setStreaming((s) => (s ?? "") + e.content);
+        else if (e.event === "thinking") setThinking(true);
       });
     } catch (e) {
       const err = e as AppError;
       if (err.kind !== "cancelled") setError(err);
     } finally {
       setStreaming(null);
+      setThinking(false);
       setMessages(await api.getMessages(active.id).catch(() => messages));
       void convs.reload();
     }
@@ -123,7 +126,7 @@ export default function ChatPage({
             </div>
             <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
               {messages.map((m) => <Bubble key={m.id} role={m.role} content={m.content} />)}
-              {streaming !== null && <Bubble role="assistant" content={streaming || "…"} />}
+              {streaming !== null && <Bubble role="assistant" content={streaming || (thinking ? "Thinking…" : "…")} />}
               {error && <ErrorBox error={error} />}
               {modelMissing && <ErrorBox error={{ kind: "not_found", message: `${active.model} is no longer installed.` }} />}
               <div ref={bottom} />

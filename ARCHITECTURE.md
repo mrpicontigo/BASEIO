@@ -54,5 +54,5 @@ the user message, streams `/api/chat` with full history, stores the reply
 - CSP restricts the webview to `self` + IPC.
 
 ## Data locations
-- SQLite: `%APPDATA%\com.baseio.app\baseio.db`
+- SQLite: `%APPDATA%\com.baseio.desktop\baseio.db`
 - Models: Ollama's store (`OLLAMA_MODELS` or `%USERPROFILE%\.ollama\models`)

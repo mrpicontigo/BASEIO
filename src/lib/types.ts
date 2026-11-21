@@ -69,6 +69,7 @@ export interface InstallPlan {
 export interface Conversation { id: number; title: string; model: string; created_at: number; updated_at: number }
 export interface Message { id: number; conversation_id: number; role: "system" | "user" | "assistant"; content: string; created_at: number }
 export type ChatEvent =
+  | { event: "thinking" }
   | { event: "token"; content: string }
   | { event: "done"; eval_count: number | null; eval_duration_ns: number | null };
 

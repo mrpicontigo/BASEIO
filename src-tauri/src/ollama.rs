@@ -99,6 +99,8 @@ pub enum PullEvent {
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "event", rename_all = "snake_case")]
 pub enum ChatEvent {
+    /// Reasoning models (qwen3, deepseek-r1) think before answering.
+    Thinking,
     Token { content: String },
     Done { eval_count: Option<u64>, eval_duration_ns: Option<u64> },
 }
@@ -389,6 +391,9 @@ impl Ollama {
                     .map_err(|e| AppError::Runtime(format!("bad response from Ollama: {e}")))?;
                 if let Some(err) = v.get("error").and_then(|e| e.as_str()) {
                     return Err(AppError::Runtime(err.to_string()));
+                }
+                if v.pointer("/message/thinking").and_then(|c| c.as_str()).is_some_and(|t| !t.is_empty()) && full.is_empty() {
+                    on_event(ChatEvent::Thinking);
                 }
                 if let Some(c) = v.pointer("/message/content").and_then(|c| c.as_str()) {
                     if !c.is_empty() {
