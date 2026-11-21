@@ -1,11 +1,12 @@
 //! Tauri command surface. Keep commands thin: validate input, delegate to a
 //! module, map errors to `AppError`.
 
+use crate::attachments::{self, Attachment, AttachmentKind};
 use crate::catalog::{self, is_valid_model_ref, Catalog, License};
 use crate::db::{Conversation, Message};
 use crate::error::{AppError, AppResult};
 use crate::hardware::{self, HardwareInfo};
-use crate::ollama::{self, ChatEvent, ChatMessage, InstalledModel, PullEvent, RunningModel, RuntimeStatus};
+use crate::ollama::{self, ChatEvent, ChatMessage, InstalledModel, ModelInfo, PullEvent, RunningModel, RuntimeStatus};
 use crate::recommend::{self, Budget, Compatibility, Recommendation};
 use crate::state::AppState;
 use serde::Serialize;
@@ -330,16 +331,41 @@ pub async fn send_message(
     state: State<'_, AppState>,
     conversation_id: i64,
     content: String,
+    attachments: Option<Vec<Attachment>>,
     on_event: Channel<ChatEvent>,
 ) -> AppResult<Message> {
     let content = content.trim().to_string();
-    if content.is_empty() {
+    let attachments = attachments.unwrap_or_default();
+    if content.is_empty() && attachments.is_empty() {
         return Err(AppError::Validation("Message is empty".into()));
+    }
+    if attachments.len() > 10 {
+        return Err(AppError::Validation("Attach at most 10 files per message".into()));
+    }
+    // The UI got these from `read_attachment`, but enforce limits again.
+    for a in &attachments {
+        let len = a.text.as_ref().map_or(0, |t| t.chars().count()) + a.data_base64.as_ref().map_or(0, |d| d.len() / 2);
+        if len > 15 * 1024 * 1024 {
+            return Err(AppError::Validation(format!("'{}' is too large", a.name)));
+        }
     }
     let conv = state
         .db
         .get_conversation(conversation_id)?
         .ok_or_else(|| AppError::NotFound("Conversation not found".into()))?;
+
+    let info = state.ollama.show(&conv.model).await.map_err(|e| match e {
+        AppError::NotFound(_) => AppError::NotFound(format!("{} is not installed any more. Pick another model.", conv.model)),
+        other => other,
+    })?;
+    let vision = info.has("vision");
+    if !vision && attachments.iter().any(|a| a.kind == AttachmentKind::Image) {
+        return Err(AppError::Validation(format!(
+            "{} can't see images. Switch to a vision model (e.g. gemma3:4b or llava:7b), or remove the image.",
+            conv.model
+        )));
+    }
+
     let key = conversation_id.to_string();
     let cancel = state
         .chats
@@ -349,17 +375,35 @@ pub async fn send_message(
     let run = async {
         let history = state.db.messages(conversation_id)?;
         if history.is_empty() {
-            state.db.rename_conversation(conversation_id, &title_from(&content))?;
+            let t = if content.is_empty() { attachments[0].name.clone() } else { content.clone() };
+            state.db.rename_conversation(conversation_id, &title_from(&t))?;
         }
-        state.db.add_message(conversation_id, "user", &content)?;
-        let mut msgs: Vec<ChatMessage> =
-            history.into_iter().map(|m| ChatMessage { role: m.role, content: m.content }).collect();
-        msgs.push(ChatMessage { role: "user".into(), content: content.clone() });
+        state.db.add_message_with(conversation_id, "user", &content, &attachments)?;
+
+        let to_msg = |role: String, text: &str, atts: &[Attachment]| {
+            let ctx = attachments::as_prompt_context(atts);
+            ChatMessage {
+                role,
+                content: if ctx.is_empty() { text.to_string() } else { format!("{ctx}\n{text}") },
+                images: if vision {
+                    atts.iter().filter_map(|a| a.data_base64.clone()).collect()
+                } else {
+                    Vec::new()
+                },
+            }
+        };
+        let mut msgs: Vec<ChatMessage> = history.iter().map(|m| to_msg(m.role.clone(), &m.content, &m.attachments)).collect();
+        msgs.push(to_msg("user".into(), &content, &attachments));
+
+        // Documents need a bigger context window than Ollama's default.
+        let has_docs = attachments.iter().chain(history.iter().flat_map(|m| m.attachments.iter()))
+            .any(|a| a.kind == AttachmentKind::Text);
+        let num_ctx = has_docs.then(|| info.context_length.unwrap_or(8192).min(16384));
 
         let mut partial = String::new();
         let res = state
             .ollama
-            .chat(&conv.model, &msgs, cancel, |e| {
+            .chat(&conv.model, &msgs, num_ctx, cancel, |e| {
                 if let ChatEvent::Token { content } = &e {
                     partial.push_str(content);
                 }
@@ -382,6 +426,33 @@ pub async fn send_message(
 #[tauri::command]
 pub fn cancel_chat(state: State<'_, AppState>, conversation_id: i64) -> bool {
     state.chats.cancel(&conversation_id.to_string())
+}
+
+#[tauri::command]
+pub fn set_conversation_model(state: State<'_, AppState>, conversation_id: i64, model: String) -> AppResult<()> {
+    if !is_valid_model_ref(&model) {
+        return Err(AppError::Validation(format!("'{model}' is not a valid model name")));
+    }
+    state.db.set_conversation_model(conversation_id, &model)
+}
+
+/// Capabilities of an installed model (text / vision / thinking …).
+#[tauri::command]
+pub async fn model_info(state: State<'_, AppState>, model: String) -> AppResult<ModelInfo> {
+    state.ollama.show(&model).await
+}
+
+/// Read a file the user picked or dropped. Runs off the UI thread (PDFs can be slow).
+#[tauri::command]
+pub async fn read_attachment(path: String) -> AppResult<Attachment> {
+    tauri::async_runtime::spawn_blocking(move || attachments::read(std::path::Path::new(&path)))
+        .await
+        .map_err(|e| AppError::Internal(format!("reading file failed: {e}")))?
+}
+
+#[tauri::command]
+pub fn attachment_extensions() -> Vec<&'static str> {
+    attachments::supported_extensions()
 }
 
 // ---------------------------------------------------------------- natural language

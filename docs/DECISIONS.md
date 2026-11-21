@@ -30,3 +30,22 @@ enough. Revisit if pages grow.
 
 ## D7 — rusqlite (bundled) over tauri-plugin-sql (2026-11-21)
 Keeps all data access in Rust behind typed commands; no SQL in the webview.
+
+## D8 — No image/video generation yet (2026-11-21)
+Ollama's docs (Jan 2026) state image generation models "currently only work on
+macOS"; models are 13 GB+ with unstated memory needs. It could not be built or
+verified on Windows here, and the project forbids simulated features. The NL
+request parser now detects image/video/audio *generation* requests and tells
+the user plainly instead of recommending chat models. Revisit when Ollama ships
+Windows support, or evaluate stable-diffusion.cpp as a second runtime.
+
+## D9 — Attachments are read in Rust by path (2026-11-21)
+Files come from the native file dialog or window drag-and-drop, which both
+yield paths. Rust reads them (size limits, extension allow-list, binary
+check), extracts text from PDF (`pdf-extract`, panic-contained; release
+profile uses `panic = "unwind"` for this) and DOCX (`zip` + XML), and stores
+attachments in SQLite (migration v2). Images go to Ollama only if the model
+reports the `vision` capability via `/api/show`.
+
+## D10 — Markdown via react-markdown + remark-gfm (2026-11-21)
+No raw HTML rendering; links open in the system browser.

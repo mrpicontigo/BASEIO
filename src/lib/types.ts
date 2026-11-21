@@ -67,7 +67,18 @@ export interface InstallPlan {
   already_installed: boolean; runtime_running: boolean; blockers: string[];
 }
 export interface Conversation { id: number; title: string; model: string; created_at: number; updated_at: number }
-export interface Message { id: number; conversation_id: number; role: "system" | "user" | "assistant"; content: string; created_at: number }
+export interface Attachment {
+  name: string; kind: "image" | "text"; mime: string; size_bytes: number;
+  text?: string | null; data_base64?: string | null; truncated: boolean;
+}
+export interface Message {
+  id: number; conversation_id: number; role: "system" | "user" | "assistant"; content: string; created_at: number;
+  attachments: Attachment[];
+}
+export interface ModelInfo {
+  name: string; capabilities: string[]; family: string | null; parameter_size: string | null;
+  quantization_level: string | null; context_length: number | null;
+}
 export type ChatEvent =
   | { event: "thinking" }
   | { event: "token"; content: string }
@@ -76,5 +87,6 @@ export type ChatEvent =
 export interface Intent {
   use_case: string | null; preference: "fast" | "best" | "balanced"; commercial_use_required: boolean;
   max_size_bytes: number | null; mentioned_models: string[]; understood: string[];
+  unsupported: { capability: string; message: string } | null;
 }
 export interface RequestInterpretation { intent: Intent; recommendations: Recommendation[] }

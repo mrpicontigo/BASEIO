@@ -87,7 +87,7 @@ function Shell() {
       </nav>
 
       <main className="relative z-10 min-w-0 flex-1 overflow-y-auto">
-        <div className={page === "chat" ? "h-full p-6" : "mx-auto max-w-5xl p-8"}>
+        <div className={page === "chat" ? "h-full" : "mx-auto max-w-5xl p-8"}>
           {page !== "system" && page !== "chat" && <RuntimeBanner status={rt} onChange={runtime.reload} />}
           {page === "discover" && <DiscoverPage runtime={rt} />}
           {page === "models" && <ModelsPage runtime={rt} onChat={(m) => { setChatModel(m); setPage("chat"); }} />}

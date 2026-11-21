@@ -15,7 +15,15 @@
 - "Thinking…" indicator for reasoning models in chat.
 - Windows installers (NSIS + MSI) via `npm run tauri build`.
 - Dev tools: `cargo run --example hwinfo`, `cargo run --example e2e`.
+- Chat attachments: images (vision models only), PDF, Word (.docx), text and code files; drag & drop or paperclip.
+- Model capabilities from Ollama (text / sees images / thinks first) in the model picker; warnings for text-only models.
+- Markdown replies with code blocks and copy buttons; blank-line gaps collapsed.
+- Error screen with Reload instead of a blank window.
+### Fixed
+- Requests like "generate images" or "video generation" no longer recommend chat models; they explain it is not available.
+- Chat header showed "New chat" after the conversation was auto-titled.
 ### Changed
+- Chat redesigned in the style of ChatGPT/Claude: centred conversation, large composer, model picker, grouped history.
 - New UI theme: modern minimal, cyan + yellow brand, logo mark, translucent panels.
 - Optional animated background sketches (rocket, goat, boat, mountains, dog, books) with an on/off switch in the sidebar (remembered per user).
 - Bundle identifier `com.baseio.app` → `com.baseio.desktop` (macOS conflict warning).

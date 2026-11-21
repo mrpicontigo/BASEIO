@@ -27,6 +27,57 @@ pub struct Intent {
     pub mentioned_models: Vec<String>,
     /// Human-readable summary of what we understood.
     pub understood: Vec<String>,
+    /// Set when the request needs something no local model in BASEIO can do
+    /// (e.g. image or video generation). Recommendations are then empty.
+    pub unsupported: Option<Unsupported>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct Unsupported {
+    pub capability: String,
+    pub message: String,
+}
+
+const GEN_VERBS: &[&str] = &[
+    "generate", "generates", "generating", "generation", "generator", "create", "creates", "creating", "make",
+    "makes", "making", "draw", "draws", "drawing", "paint", "painting", "design", "render", "produce", "text-to-image",
+];
+const IMAGE_WORDS: &[&str] = &[
+    "image", "images", "picture", "pictures", "photo", "photos", "art", "artwork", "illustration", "illustrations",
+    "logo", "logos", "wallpaper", "wallpapers", "drawing", "drawings", "painting", "paintings", "avatar", "pic", "pics",
+];
+const VIDEO_WORDS: &[&str] = &["video", "videos", "animation", "animations", "movie", "movies", "clip", "clips", "film"];
+const AUDIO_WORDS: &[&str] = &["music", "song", "songs", "audio", "voice", "voices", "speech", "sing", "singing", "podcast"];
+
+fn detect_unsupported(ws: &[String]) -> Option<Unsupported> {
+    let any = |list: &[&str]| ws.iter().any(|w| list.contains(&w.as_str()));
+    let generating = any(GEN_VERBS);
+    if any(VIDEO_WORDS) {
+        return Some(Unsupported {
+            capability: "video".into(),
+            message: "Video generation and video understanding aren't available in BASEIO yet. \
+                      Local video models need far more GPU memory than typical PCs have."
+                .into(),
+        });
+    }
+    if any(AUDIO_WORDS) && (generating || ws.iter().any(|w| w == "music" || w == "song" || w == "sing")) {
+        return Some(Unsupported {
+            capability: "audio".into(),
+            message: "Music, voice and audio generation aren't available in BASEIO yet.".into(),
+        });
+    }
+    // "drawing"/"painting" are both verbs and nouns; require another generation cue
+    // or an explicit image word alongside the verb.
+    let gen_verb_strict = ws.iter().any(|w| GEN_VERBS.contains(&w.as_str()) && w != "drawing" && w != "painting");
+    if any(IMAGE_WORDS) && gen_verb_strict {
+        return Some(Unsupported {
+            capability: "image_generation".into(),
+            message: "Image generation isn't available in BASEIO yet: Ollama only supports image models on macOS \
+                      for now. Models in the \"Images\" category can look at and describe images, but not create them."
+                .into(),
+        });
+    }
+    None
 }
 
 const USE_CASE_KEYWORDS: &[(&str, &[&str])] = &[
@@ -73,6 +124,23 @@ pub fn parse(text: &str, catalog: &Catalog) -> Intent {
     let lower = text.to_lowercase();
     let ws = words(text);
     let mut understood = Vec::new();
+
+    if let Some(u) = detect_unsupported(&ws) {
+        understood.push(match u.capability.as_str() {
+            "video" => "Wants: video".to_string(),
+            "audio" => "Wants: audio / music".to_string(),
+            _ => "Wants: create images".to_string(),
+        });
+        return Intent {
+            use_case: None,
+            preference: Preference::Balanced,
+            commercial_use_required: false,
+            max_size_bytes: None,
+            mentioned_models: Vec::new(),
+            understood,
+            unsupported: Some(u),
+        };
+    }
 
     // Highest-priority use case = first in USE_CASE_KEYWORDS order that matches.
     let use_case = USE_CASE_KEYWORDS
@@ -125,11 +193,14 @@ pub fn parse(text: &str, catalog: &Catalog) -> Intent {
         understood.push(format!("Mentioned: {}", mentioned_models.join(", ")));
     }
 
-    Intent { use_case, preference, commercial_use_required, max_size_bytes, mentioned_models, understood }
+    Intent { use_case, preference, commercial_use_required, max_size_bytes, mentioned_models, understood, unsupported: None }
 }
 
 /// Apply an intent to the catalogue for this machine.
 pub fn recommend_for(intent: &Intent, catalog: &Catalog, b: &Budget) -> Vec<Recommendation> {
+    if intent.unsupported.is_some() {
+        return Vec::new();
+    }
     // Filter the catalogue first, then reuse the standard recommender.
     let mut filtered = catalog.clone();
     filtered.models.retain(|m| {
@@ -231,6 +302,30 @@ mod tests {
         let r = recommend_for(&i, curated(), &budget());
         let coder = r.iter().find(|x| x.model_id == "qwen2.5-coder").unwrap();
         assert_eq!(coder.variant.tag, "qwen2.5-coder:1.5b");
+    }
+
+    #[test]
+    fn image_generation_is_unsupported_not_vision() {
+        for q in ["give me a model that generates images", "image generation", "I want to create pictures of cats", "draw me a logo"] {
+            let i = parse(q, curated());
+            assert_eq!(i.unsupported.as_ref().map(|u| u.capability.as_str()), Some("image_generation"), "{q}");
+            assert!(recommend_for(&i, curated(), &budget()).is_empty(), "{q}");
+        }
+    }
+
+    #[test]
+    fn video_and_music_are_unsupported() {
+        assert_eq!(parse("video generation", curated()).unsupported.unwrap().capability, "video");
+        assert_eq!(parse("make music for my game", curated()).unsupported.unwrap().capability, "audio");
+    }
+
+    #[test]
+    fn understanding_images_is_still_vision() {
+        for q in ["describe my photos", "what is in this picture", "read text from a screenshot"] {
+            let i = parse(q, curated());
+            assert!(i.unsupported.is_none(), "{q}");
+            assert_eq!(i.use_case.as_deref(), Some("vision"), "{q}");
+        }
     }
 
     #[test]

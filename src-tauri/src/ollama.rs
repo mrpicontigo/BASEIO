@@ -83,6 +83,27 @@ pub struct RunningModel {
 pub struct ChatMessage {
     pub role: String,
     pub content: String,
+    /// Base64 images, only for models with the "vision" capability.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub images: Vec<String>,
+}
+
+/// What a model can do, as reported by Ollama's `/api/show`.
+#[derive(Debug, Clone, Serialize, Default)]
+pub struct ModelInfo {
+    pub name: String,
+    /// e.g. "completion", "vision", "thinking", "tools", "embedding".
+    pub capabilities: Vec<String>,
+    pub family: Option<String>,
+    pub parameter_size: Option<String>,
+    pub quantization_level: Option<String>,
+    pub context_length: Option<u64>,
+}
+
+impl ModelInfo {
+    pub fn has(&self, cap: &str) -> bool {
+        self.capabilities.iter().any(|c| c == cap)
+    }
 }
 
 /// Progress event streamed to the UI during a pull.
@@ -262,6 +283,20 @@ impl Ollama {
         Ok(check(r).await?.json::<R>().await.map_err(net_err)?.models)
     }
 
+    pub async fn show(&self, model: &str) -> AppResult<ModelInfo> {
+        validate(model)?;
+        let r = self
+            .http
+            .post(self.url("/api/show"))
+            .json(&serde_json::json!({ "model": model }))
+            .timeout(Duration::from_secs(15))
+            .send()
+            .await
+            .map_err(net_err)?;
+        let v: serde_json::Value = check(r).await?.json().await.map_err(net_err)?;
+        Ok(parse_show(model, &v))
+    }
+
     pub async fn is_installed(&self, model: &str) -> AppResult<bool> {
         let want = normalize_ref(model);
         Ok(self.list().await?.iter().any(|m| normalize_ref(&m.name) == want))
@@ -355,18 +390,24 @@ impl Ollama {
     }
 
     /// Stream a chat completion. Returns the full assistant reply.
+    /// `num_ctx` raises the context window (e.g. when documents are attached).
     pub async fn chat(
         &self,
         model: &str,
         messages: &[ChatMessage],
+        num_ctx: Option<u64>,
         mut cancel: watch::Receiver<bool>,
         mut on_event: impl FnMut(ChatEvent),
     ) -> AppResult<String> {
         validate(model)?;
+        let mut body = serde_json::json!({ "model": model, "messages": messages, "stream": true });
+        if let Some(n) = num_ctx {
+            body["options"] = serde_json::json!({ "num_ctx": n });
+        }
         let resp = self
             .http
             .post(self.url("/api/chat"))
-            .json(&serde_json::json!({ "model": model, "messages": messages, "stream": true }))
+            .json(&body)
             .send()
             .await
             .map_err(net_err)?;
@@ -450,6 +491,25 @@ fn explain_pull_error(err: &str) -> String {
     }
 }
 
+fn parse_show(model: &str, v: &serde_json::Value) -> ModelInfo {
+    let s = |p: &str| v.pointer(p).and_then(|x| x.as_str()).map(String::from);
+    let context_length = v.get("model_info").and_then(|mi| mi.as_object()).and_then(|o| {
+        o.iter().find(|(k, _)| k.ends_with(".context_length")).and_then(|(_, x)| x.as_u64())
+    });
+    ModelInfo {
+        name: model.to_string(),
+        capabilities: v
+            .get("capabilities")
+            .and_then(|c| c.as_array())
+            .map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect())
+            .unwrap_or_default(),
+        family: s("/details/family"),
+        parameter_size: s("/details/parameter_size"),
+        quantization_level: s("/details/quantization_level"),
+        context_length,
+    }
+}
+
 /// `llama3.2` and `llama3.2:latest` refer to the same model.
 pub fn normalize_ref(s: &str) -> String {
     let s = s.trim().to_lowercase();
@@ -516,6 +576,25 @@ mod tests {
         assert!(handle_pull_line(r#"{"status":"success"}"#, &mut p, &mut f).unwrap());
         assert!(handle_pull_line(r#"{"error":"pull model manifest: file does not exist"}"#, &mut p, &mut f).is_err());
         assert_eq!(events.len(), 2);
+    }
+
+    #[test]
+    fn show_parsing() {
+        let v: serde_json::Value = serde_json::from_str(
+            r#"{"capabilities":["completion","vision"],"details":{"family":"gemma3","parameter_size":"4.3B"},
+                "model_info":{"gemma3.context_length":131072,"general.architecture":"gemma3"}}"#,
+        )
+        .unwrap();
+        let i = parse_show("gemma3:4b", &v);
+        assert!(i.has("vision"));
+        assert_eq!(i.context_length, Some(131072));
+        assert_eq!(i.parameter_size.as_deref(), Some("4.3B"));
+    }
+
+    #[test]
+    fn images_omitted_when_empty() {
+        let m = ChatMessage { role: "user".into(), content: "hi".into(), images: vec![] };
+        assert!(!serde_json::to_string(&m).unwrap().contains("images"));
     }
 
     #[test]

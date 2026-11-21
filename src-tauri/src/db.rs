@@ -1,6 +1,7 @@
 //! SQLite persistence: conversations, messages, licence acceptances, settings.
 //! Schema changes go in `MIGRATIONS` (append only; never edit an applied one).
 
+use crate::attachments::{Attachment, AttachmentKind};
 use crate::error::AppResult;
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::Serialize;
@@ -30,6 +31,19 @@ const MIGRATIONS: &[&str] = &[
         accepted_at INTEGER NOT NULL
      );
      CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);",
+    // v2: files attached to messages
+    "CREATE TABLE attachments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        message_id INTEGER NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        kind TEXT NOT NULL CHECK (kind IN ('image','text')),
+        mime TEXT NOT NULL,
+        size_bytes INTEGER NOT NULL,
+        text TEXT,
+        data TEXT,
+        truncated INTEGER NOT NULL DEFAULT 0
+     );
+     CREATE INDEX idx_attachments_msg ON attachments(message_id);",
 ];
 
 #[derive(Debug, Clone, Serialize)]
@@ -48,6 +62,7 @@ pub struct Message {
     pub role: String,
     pub content: String,
     pub created_at: i64,
+    pub attachments: Vec<Attachment>,
 }
 
 pub struct Db(Mutex<Connection>);
@@ -124,16 +139,36 @@ impl Db {
         Ok(())
     }
 
+    pub fn set_conversation_model(&self, id: i64, model: &str) -> AppResult<()> {
+        self.conn().execute("UPDATE conversations SET model = ?1 WHERE id = ?2", params![model, id])?;
+        Ok(())
+    }
+
     pub fn add_message(&self, conversation_id: i64, role: &str, content: &str) -> AppResult<Message> {
-        let c = self.conn();
+        self.add_message_with(conversation_id, role, content, &[])
+    }
+
+    /// Insert a message and its attachments atomically.
+    pub fn add_message_with(&self, conversation_id: i64, role: &str, content: &str, atts: &[Attachment]) -> AppResult<Message> {
+        let mut c = self.conn();
+        let tx = c.transaction()?;
         let t = now();
-        c.execute(
+        tx.execute(
             "INSERT INTO messages (conversation_id, role, content, created_at) VALUES (?1, ?2, ?3, ?4)",
             params![conversation_id, role, content, t],
         )?;
-        let id = c.last_insert_rowid();
-        c.execute("UPDATE conversations SET updated_at = ?1 WHERE id = ?2", params![t, conversation_id])?;
-        Ok(Message { id, conversation_id, role: role.into(), content: content.into(), created_at: t })
+        let id = tx.last_insert_rowid();
+        for a in atts {
+            let kind = match a.kind { AttachmentKind::Image => "image", AttachmentKind::Text => "text" };
+            tx.execute(
+                "INSERT INTO attachments (message_id, name, kind, mime, size_bytes, text, data, truncated)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                params![id, a.name, kind, a.mime, a.size_bytes as i64, a.text, a.data_base64, a.truncated],
+            )?;
+        }
+        tx.execute("UPDATE conversations SET updated_at = ?1 WHERE id = ?2", params![t, conversation_id])?;
+        tx.commit()?;
+        Ok(Message { id, conversation_id, role: role.into(), content: content.into(), created_at: t, attachments: atts.to_vec() })
     }
 
     pub fn messages(&self, conversation_id: i64) -> AppResult<Vec<Message>> {
@@ -141,10 +176,42 @@ impl Db {
         let mut st = c.prepare(
             "SELECT id, conversation_id, role, content, created_at FROM messages WHERE conversation_id = ?1 ORDER BY id",
         )?;
+        let mut msgs: Vec<Message> = st
+            .query_map([conversation_id], |r| {
+                Ok(Message {
+                    id: r.get(0)?, conversation_id: r.get(1)?, role: r.get(2)?, content: r.get(3)?,
+                    created_at: r.get(4)?, attachments: Vec::new(),
+                })
+            })?
+            .collect::<Result<_, _>>()?;
+
+        let mut st = c.prepare(
+            "SELECT a.message_id, a.name, a.kind, a.mime, a.size_bytes, a.text, a.data, a.truncated
+             FROM attachments a JOIN messages m ON m.id = a.message_id
+             WHERE m.conversation_id = ?1 ORDER BY a.id",
+        )?;
         let rows = st.query_map([conversation_id], |r| {
-            Ok(Message { id: r.get(0)?, conversation_id: r.get(1)?, role: r.get(2)?, content: r.get(3)?, created_at: r.get(4)? })
+            let kind: String = r.get(2)?;
+            Ok((
+                r.get::<_, i64>(0)?,
+                Attachment {
+                    name: r.get(1)?,
+                    kind: if kind == "image" { AttachmentKind::Image } else { AttachmentKind::Text },
+                    mime: r.get(3)?,
+                    size_bytes: r.get::<_, i64>(4)? as u64,
+                    text: r.get(5)?,
+                    data_base64: r.get(6)?,
+                    truncated: r.get(7)?,
+                },
+            ))
         })?;
-        Ok(rows.collect::<Result<_, _>>()?)
+        for row in rows {
+            let (mid, a) = row?;
+            if let Some(m) = msgs.iter_mut().find(|m| m.id == mid) {
+                m.attachments.push(a);
+            }
+        }
+        Ok(msgs)
     }
 
     pub fn accept_license(&self, license_key: &str, model_tag: &str) -> AppResult<()> {
@@ -179,6 +246,27 @@ mod tests {
         db.delete_conversation(c.id).unwrap();
         assert!(db.messages(c.id).unwrap().is_empty());
         assert!(db.get_conversation(c.id).unwrap().is_none());
+    }
+
+    #[test]
+    fn attachments_roundtrip_and_cascade() {
+        let db = Db::open_in_memory().unwrap();
+        let c = db.create_conversation("m", "t").unwrap();
+        let att = Attachment {
+            name: "a.pdf".into(), kind: AttachmentKind::Text, mime: "application/pdf".into(), size_bytes: 10,
+            text: Some("hello".into()), data_base64: None, truncated: true,
+        };
+        db.add_message_with(c.id, "user", "read this", &[att]).unwrap();
+        db.add_message(c.id, "assistant", "ok").unwrap();
+        let msgs = db.messages(c.id).unwrap();
+        assert_eq!(msgs[0].attachments.len(), 1);
+        assert!(msgs[0].attachments[0].truncated);
+        assert!(msgs[1].attachments.is_empty());
+        db.set_conversation_model(c.id, "other").unwrap();
+        assert_eq!(db.get_conversation(c.id).unwrap().unwrap().model, "other");
+        db.delete_conversation(c.id).unwrap();
+        let n: i64 = db.conn().query_row("SELECT COUNT(*) FROM attachments", [], |r| r.get(0)).unwrap();
+        assert_eq!(n, 0);
     }
 
     #[test]

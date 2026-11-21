@@ -15,6 +15,9 @@
 - [x] SQLite persistence; local chat with streaming + stop
 - [x] End-to-end test against real Ollama 0.40.16 (`cargo run --example e2e`)
 - [ ] Live search of the Ollama library / Hugging Face GGUF models
+- [x] Chat attachments: images (vision models), PDF, DOCX, text/code
+- [x] Model capability detection (`/api/show`) + text-only warnings
+- [x] ChatGPT/Claude-style chat UI with markdown
 
 ## Day 3 — Intelligence & release
 - [ ] Natural-language model requests ("I want something for coding on my laptop")
@@ -29,6 +32,7 @@
 ## Later
 - Hugging Face gated-model handling with user token
 - Model detail page, prompt presets, system prompts per chat
-- Markdown rendering + code highlighting in chat
+- Syntax highlighting in code blocks
+- Image generation (blocked: Ollama image models are macOS-only; see D8)
 - GPU free-VRAM via NVML/ADLX; tokens/sec benchmark per model
 - Additional runtimes (llama.cpp server, LM Studio)

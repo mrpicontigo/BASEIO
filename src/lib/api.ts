@@ -1,7 +1,7 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
 import type {
   AppError, Catalog, CatalogAssessment, ChatEvent, Conversation, HardwareInfo, InstallPlan,
-  InstalledModel, Message, PullEvent, Recommendation, RequestInterpretation, RunningModel, RuntimeStatus,
+  Attachment, InstalledModel, Message, ModelInfo, PullEvent, Recommendation, RequestInterpretation, RunningModel, RuntimeStatus,
 } from "./types";
 
 /** Normalise anything thrown by `invoke` into an AppError. */
@@ -52,8 +52,13 @@ export const api = {
   createConversation: (model: string) => call<Conversation>("create_conversation", { model }),
   getMessages: (conversationId: number) => call<Message[]>("get_messages", { conversationId }),
   deleteConversation: (conversationId: number) => call<void>("delete_conversation", { conversationId }),
-  sendMessage: (conversationId: number, content: string, onEvent: (e: ChatEvent) => void) =>
-    call<Message>("send_message", { conversationId, content, onEvent: channel(onEvent) }),
+  sendMessage: (conversationId: number, content: string, attachments: Attachment[], onEvent: (e: ChatEvent) => void) =>
+    call<Message>("send_message", { conversationId, content, attachments, onEvent: channel(onEvent) }),
+  setConversationModel: (conversationId: number, model: string) =>
+    call<void>("set_conversation_model", { conversationId, model }),
+  modelInfo: (model: string) => call<ModelInfo>("model_info", { model }),
+  readAttachment: (path: string) => call<Attachment>("read_attachment", { path }),
+  attachmentExtensions: () => call<string[]>("attachment_extensions"),
   cancelChat: (conversationId: number) => call<boolean>("cancel_chat", { conversationId }),
 
   interpretRequest: (text: string) => call<RequestInterpretation>("interpret_request", { text }),

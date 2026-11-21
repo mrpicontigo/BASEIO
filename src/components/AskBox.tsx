@@ -56,7 +56,13 @@ export function AskBox({ installed, onInstall }: { installed: Set<string>; onIns
               ? <span className="text-muted">No specific needs recognised, showing general models.</span>
               : res.intent.understood.map((u) => <span key={u} className="rounded-full bg-accent-2/10 px-2.5 py-0.5 text-accent-2">{u}</span>)}
           </div>
-          {res.recommendations.length === 0 && (
+          {res.intent.unsupported && (
+            <div className="rounded-xl border border-accent-2/30 bg-accent-2/5 p-4 text-sm">
+              <p className="font-medium text-accent-2">Not available yet</p>
+              <p className="mt-1 text-fg/85">{res.intent.unsupported.message}</p>
+            </div>
+          )}
+          {res.recommendations.length === 0 && !res.intent.unsupported && (
             <p className="text-sm text-muted">No model in the catalogue matches all of that and runs well here. Try loosening a requirement.</p>
           )}
           <div className="grid gap-2 md:grid-cols-3">

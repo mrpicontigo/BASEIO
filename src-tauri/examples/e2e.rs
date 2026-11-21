@@ -30,10 +30,10 @@ fn main() {
         println!("installed: {:?}", o.list().await.unwrap().iter().map(|m| &m.name).collect::<Vec<_>>());
 
         let (_tx, rx) = tokio::sync::watch::channel(false);
-        let msgs = [ChatMessage { role: "user".into(), content: "Reply with exactly: hello from baseio /no_think".into() }];
+        let msgs = [ChatMessage { role: "user".into(), content: "Reply with exactly: hello from baseio /no_think".into(), images: vec![] }];
         print!("chat: ");
         let reply = o
-            .chat(&model, &msgs, rx, |e| match e {
+            .chat(&model, &msgs, None, rx, |e| match e {
                 ChatEvent::Token { content } => { print!("{content}"); let _ = std::io::stdout().flush(); }
                 ChatEvent::Done { eval_count, .. } => println!("\n  [done, {eval_count:?} tokens]"),
                 ChatEvent::Thinking => {}

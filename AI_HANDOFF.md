@@ -1,6 +1,6 @@
 # AI Handoff — BASEIO (Local AI Hub)
 
-_Last updated: 2026-11-21 (end of Day 1 session)_
+_Last updated: 2026-11-21 (Day 1 session, after chat/attachments update)_
 
 Read this first. It is the single source of truth for where the project is.
 Also read: ARCHITECTURE.md (how it works), DEVELOPMENT.md (commands, gotchas,
@@ -21,7 +21,10 @@ Remaining Day 3 work: recovery/offline polish and an Ollama-bundling decision.
 | Ollama: status, start, list, running, load/unload, delete | `ollama.rs`, `commands.rs` | `ModelsPage.tsx`, `RuntimeBanner.tsx` | e2e (delete only via UI path, not e2e) |
 | Approval-based install: exact registry size, disk check, licence acceptance, streamed progress, cancel, post-install verify | `commands.rs::prepare_install/install_model`, `ollama.rs::pull/registry_size` | `InstallDialog.tsx`, `lib/installs.tsx` | e2e pulled qwen3:0.6b (522,653,767 B) |
 | SQLite (conversations, messages, licence acceptances, migrations) | `db.rs` | — | unit tests; DB created by app at startup |
-| Streaming chat with history, stop, "Thinking…" for reasoning models | `commands.rs::send_message`, `ollama.rs::chat` | `ChatPage.tsx` | e2e chat with qwen3:0.6b |
+| Streaming chat (ChatGPT-style UI, markdown, history, stop, "Thinking…", model switch per chat) | `commands.rs::send_message`, `ollama.rs::chat` | `ChatPage.tsx`, `Composer.tsx`, `Markdown.tsx` | e2e chat with qwen3:0.6b |
+| Attachments: images → vision models; PDF, DOCX, text/code → extracted text | `attachments.rs`, `db.rs` (migration v2) | `Composer.tsx` | unit tests + `cargo run --example doc_chat -- notes.md` (real model answered from file) |
+| Model capabilities (text/vision/thinking) via `/api/show` | `ollama.rs::show` | model picker, composer warnings | unit test + live gemma3:1b → ["completion"] |
+| Unsupported requests (image/video/audio generation) explained, not mis-recommended | `intent.rs::detect_unsupported` | `AskBox.tsx` | unit tests |
 | Natural-language requests (rule-based, no side effects) | `intent.rs`, `commands.rs::interpret_request` | `components/AskBox.tsx` | unit tests |
 | Windows installers | `tauri.conf.json` bundle targets nsis+msi | — | `npm run tauri build` OK |
 
@@ -30,7 +33,8 @@ Remaining Day 3 work: recovery/offline polish and an Ollama-bundling decision.
 - `src-tauri/src/lib.rs` — app setup, state, command registration
 - `src/lib/api.ts` + `src/lib/types.ts` — frontend mirror of the API; keep in sync with Rust serde types
 - `src-tauri/catalog/models.json` — curated catalogue (sizes approximate by design; exact size fetched at install)
-- `src-tauri/examples/{hwinfo,e2e}.rs` — real-hardware / real-Ollama checks
+- `src-tauri/examples/{hwinfo,e2e,doc_chat}.rs` — real-hardware / real-Ollama checks
+- `src-tauri/src/attachments.rs` — file reading/extraction (limits, allow-list)
 
 ## Commands
 ```powershell
@@ -45,7 +49,10 @@ npm run tauri build                  # → src-tauri/target/release/bundle/{nsis
 ## Known bugs / limitations
 - `install_model` re-checks disk space using the catalogue estimate, not the
   verified size from `prepare_install` (fine in practice, minor).
-- Chat renders plain text (no Markdown / code highlighting).
+- Image attachments are untested end-to-end: no vision model is installed on the dev machine (needs e.g. gemma3:4b, 3.3 GB).
+- Image/video generation not supported (Ollama image models are macOS-only; see docs/DECISIONS.md D8).
+- Pasting images from the clipboard is not supported (paperclip or drag & drop only).
+- Code blocks have no syntax highlighting.
 - Integrated GPUs (Intel Iris Xe etc.) are treated as CPU-only for
   recommendations; Ollama may still use them via Vulkan, so ratings may be pessimistic.
 - The installer does not bundle or install Ollama; the app shows a "Get Ollama" link.
@@ -61,7 +68,7 @@ npm run tauri build                  # → src-tauri/target/release/bundle/{nsis
    (expected to work by design, but not yet tested).
 3. Ollama onboarding: optional consented silent install of OllamaSetup.exe
    (verify hash) from the RuntimeBanner.
-4. Markdown rendering in chat.
+4. Test image attachments with a vision model (install gemma3:4b in the app).
 5. Hugging Face GGUF search → install via `hf.co/org/repo:quant` (gated check via HF API).
 
 ## Exact next task
@@ -76,8 +83,8 @@ resumes partial blobs.
 | Check | Status |
 |---|---|
 | `npm run typecheck` | ✅ pass |
-| `npm test` (3 tests) | ✅ pass |
-| `cargo test` (28 tests, 0 warnings) | ✅ pass |
+| `npm test` (4 tests) | ✅ pass |
+| `cargo test` (41 tests, 0 warnings) | ✅ pass |
 | `cargo run --example e2e` (real Ollama 0.40.16) | ✅ pass |
 | `npm run tauri dev` | ✅ starts, DB created |
 | `npm run tauri build` | ✅ NSIS 2.9 MB + MSI 3.9 MB |
