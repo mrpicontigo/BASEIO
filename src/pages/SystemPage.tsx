@@ -36,7 +36,7 @@ export default function SystemPage() {
     <div className="space-y-4">
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold">Your computer</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Your computer</h1>
           <p className="text-sm text-muted">Detected directly from Windows. Used to recommend models that will run well.</p>
         </div>
         <Button variant="ghost" onClick={reload} disabled={loading}>Refresh</Button>

@@ -16,4 +16,6 @@
 - Windows installers (NSIS + MSI) via `npm run tauri build`.
 - Dev tools: `cargo run --example hwinfo`, `cargo run --example e2e`.
 ### Changed
+- New UI theme: modern minimal, cyan + yellow brand, logo mark, translucent panels.
+- Optional animated background sketches (rocket, goat, boat, mountains, dog, books) with an on/off switch in the sidebar (remembered per user).
 - Bundle identifier `com.baseio.app` → `com.baseio.desktop` (macOS conflict warning).

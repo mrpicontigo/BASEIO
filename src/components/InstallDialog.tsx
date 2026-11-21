@@ -22,8 +22,8 @@ export function InstallDialog({ tag, onClose }: { tag: string; onClose: () => vo
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
-      <div className="w-full max-w-lg rounded-lg border border-line bg-panel p-5" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-lg rounded-2xl border border-line bg-panel-2 p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-lg font-semibold">Install {p?.model_name ?? tag}</h2>
         <p className="mb-4 font-mono text-xs text-muted">{tag}</p>
 
@@ -55,7 +55,7 @@ export function InstallDialog({ tag, onClose }: { tag: string; onClose: () => vo
               </div>
             )}
 
-            <div className="rounded border border-line bg-panel-2 p-3">
+            <div className="rounded-xl border border-line bg-bg/50 p-4">
               <p className="font-medium">Licence: {p.license.name}</p>
               {p.license.commercial_use === "conditional" && <p className="text-xs text-slow">Commercial use has conditions.</p>}
               {p.license.gated && <p className="text-xs text-slow">The publisher requires accepting terms before access.</p>}

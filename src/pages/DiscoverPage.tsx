@@ -60,7 +60,7 @@ export default function DiscoverPage({ runtime }: { runtime: RuntimeStatus | nul
     <div className="space-y-4">
       {installing && <InstallDialog tag={installing} onClose={() => setInstalling(null)} />}
       <header>
-        <h1 className="text-xl font-semibold">Discover models</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Discover models</h1>
         <p className="text-sm text-muted">
           Ratings are estimates based on your hardware
           {assessment.data?.disk_free_bytes != null && <> · {formatBytes(assessment.data.disk_free_bytes)} free where models are stored</>}.
@@ -74,7 +74,7 @@ export default function DiscoverPage({ runtime }: { runtime: RuntimeStatus | nul
           <button
             key={u ?? "all"}
             onClick={() => setUseCase(u)}
-            className={`rounded-full border px-3 py-1 text-sm ${useCase === u ? "border-accent bg-accent/20 text-fg" : "border-line text-muted hover:text-fg"}`}
+            className={`rounded-full border px-3.5 py-1 text-sm transition ${useCase === u ? "border-accent/60 bg-accent/10 text-accent" : "border-line text-muted hover:border-accent/30 hover:text-fg"}`}
           >
             {u ? useCaseLabel[u] : "All"}
           </button>
@@ -89,7 +89,7 @@ export default function DiscoverPage({ runtime }: { runtime: RuntimeStatus | nul
         )}
         <div className="grid gap-2 md:grid-cols-2">
           {recs.data?.slice(0, 4).map((r) => (
-            <div key={r.variant.tag} className="rounded border border-line bg-panel-2 p-3">
+            <div key={r.variant.tag} className="rounded-xl border border-line bg-panel-2/70 p-4 transition hover:border-accent/40">
               <div className="flex items-center justify-between">
                 <span className="font-medium">{r.model_name}</span>
                 <TierBadge tier={r.compatibility.tier} />
@@ -125,9 +125,9 @@ export default function DiscoverPage({ runtime }: { runtime: RuntimeStatus | nul
             <p className="text-sm text-fg/80">{m.description}</p>
             <div className="mt-2 flex flex-wrap gap-1.5 text-xs">
               {m.use_cases.map((u) => (
-                <span key={u} className="rounded bg-panel-2 px-2 py-0.5 text-muted">{useCaseLabel[u] ?? u}</span>
+                <span key={u} className="rounded-full bg-panel-2 px-2.5 py-0.5 text-muted">{useCaseLabel[u] ?? u}</span>
               ))}
-              <button onClick={() => openUrl(m.license.url)} className="rounded bg-panel-2 px-2 py-0.5 text-muted hover:text-fg">
+              <button onClick={() => openUrl(m.license.url)} className="rounded-full bg-panel-2 px-2.5 py-0.5 text-muted hover:text-fg">
                 Licence: {m.license.name}{m.license.commercial_use === "conditional" ? " (conditions apply)" : ""}
               </button>
             </div>

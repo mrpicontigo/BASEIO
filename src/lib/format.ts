@@ -22,10 +22,10 @@ export const tierLabel: Record<Tier, string> = {
 };
 
 export const tierClass: Record<Tier, string> = {
-  great: "bg-great/15 text-great border-great/40",
-  good: "bg-good/15 text-good border-good/40",
-  slow: "bg-slow/15 text-slow border-slow/40",
-  too_large: "bg-bad/15 text-bad border-bad/40",
+  great: "bg-great/10 text-great border-great/30",
+  good: "bg-good/10 text-good border-good/30",
+  slow: "bg-slow/10 text-slow border-slow/30",
+  too_large: "bg-bad/10 text-bad border-bad/30",
 };
 
 export const useCaseLabel: Record<string, string> = {

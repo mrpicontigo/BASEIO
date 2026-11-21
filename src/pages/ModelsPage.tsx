@@ -69,7 +69,7 @@ export default function ModelsPage({ runtime, onChat }: { runtime: RuntimeStatus
   return (
     <div className="space-y-4">
       <header>
-        <h1 className="text-xl font-semibold">My models</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">My models</h1>
         <p className="text-sm text-muted">
           {runtime?.running ? `Ollama ${runtime.version} is running.` : "Start the AI engine to manage models."}
         </p>

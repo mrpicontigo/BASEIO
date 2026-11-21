@@ -17,11 +17,11 @@ export function RuntimeBanner({ status, onChange }: { status: RuntimeStatus | nu
   };
 
   return (
-    <div className="mb-4 rounded-lg border border-slow/40 bg-slow/10 p-4 text-sm">
+    <div className="mb-4 rounded-2xl border border-accent-2/30 bg-accent-2/5 p-5 text-sm backdrop-blur-md">
       {status.installed ? (
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="font-medium text-slow">The AI engine (Ollama) is not running</p>
+            <p className="font-medium text-accent-2">The AI engine (Ollama) is not running</p>
             <p className="text-fg/80">Start it to download and chat with models.</p>
           </div>
           <Button onClick={start} disabled={busy}>{busy ? "Starting…" : "Start engine"}</Button>
@@ -29,7 +29,7 @@ export function RuntimeBanner({ status, onChange }: { status: RuntimeStatus | nu
       ) : (
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="font-medium text-slow">The AI engine (Ollama) is not installed</p>
+            <p className="font-medium text-accent-2">The AI engine (Ollama) is not installed</p>
             <p className="text-fg/80">BASEIO uses Ollama to run models. Install it, then press “Check again”.</p>
           </div>
           <div className="flex gap-2">

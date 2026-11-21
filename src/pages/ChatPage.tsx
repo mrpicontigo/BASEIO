@@ -79,11 +79,11 @@ export default function ChatPage({
   const modelMissing = active && installed.data && !installed.data.some((m) => m.name === active.model);
 
   return (
-    <div className="-m-6 flex h-[calc(100%+3rem)]">
-      <aside className="flex w-60 shrink-0 flex-col border-r border-line bg-panel">
+    <div className="flex h-full overflow-hidden rounded-2xl border border-line bg-panel backdrop-blur-md">
+      <aside className="flex w-64 shrink-0 flex-col border-r border-line">
         <div className="space-y-2 border-b border-line p-3">
           <select
-            className="w-full rounded border border-line bg-panel-2 px-2 py-1.5 text-sm"
+            className="w-full rounded-lg border border-line bg-panel-2 px-2 py-1.5 text-sm outline-none focus:border-accent/60"
             value={newModel}
             onChange={(e) => setNewModel(e.target.value)}
             disabled={!installed.data?.length}
@@ -97,7 +97,7 @@ export default function ChatPage({
           {convs.data?.map((c) => (
             <div
               key={c.id}
-              className={`group mb-1 flex cursor-pointer items-center rounded px-2 py-1.5 text-sm ${active?.id === c.id ? "bg-accent/20" : "hover:bg-panel-2"}`}
+              className={`group mb-1 flex cursor-pointer items-center rounded px-2 py-1.5 text-sm ${active?.id === c.id ? "bg-accent/10 text-accent" : "hover:bg-panel-2"}`}
               onClick={() => open(c)}
             >
               <div className="min-w-0 flex-1">
@@ -134,7 +134,7 @@ export default function ChatPage({
             <div className="border-t border-line p-4">
               <div className="flex gap-2">
                 <textarea
-                  className="flex-1 resize-none rounded border border-line bg-panel-2 px-3 py-2 text-sm outline-none focus:border-accent"
+                  className="flex-1 resize-none rounded-xl border border-line bg-panel-2 px-4 py-3 text-sm outline-none transition focus:border-accent/60"
                   rows={2}
                   placeholder={running ? "Type a message (Enter to send, Shift+Enter for a new line)" : "Start the AI engine first"}
                   value={draft}
@@ -158,7 +158,7 @@ function Bubble({ role, content }: { role: string; content: string }) {
   const user = role === "user";
   return (
     <div className={`flex ${user ? "justify-end" : "justify-start"}`}>
-      <div className={`max-w-[80%] whitespace-pre-wrap rounded-lg px-4 py-2 text-sm ${user ? "bg-accent/25" : "bg-panel-2"}`}>
+      <div className={`max-w-[78%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 leading-relaxed text-sm ${user ? "bg-accent/15 border border-accent/25 rounded-br-sm" : "bg-panel-2 border border-line rounded-bl-sm"}`}>
         {content}
       </div>
     </div>

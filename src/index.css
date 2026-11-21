@@ -1,18 +1,65 @@
 @import "tailwindcss";
 
+/* Brand: cyan (primary) + yellow (secondary) on a deep blue-black. */
 @theme {
-  --color-bg: #0d1117;
-  --color-panel: #161b22;
-  --color-panel-2: #1f2630;
-  --color-line: #2a313c;
-  --color-fg: #e6edf3;
-  --color-muted: #8b949e;
-  --color-accent: #4f8cff;
-  --color-great: #3fb950;
-  --color-good: #58a6ff;
-  --color-slow: #d29922;
-  --color-bad: #f85149;
+  --color-bg: #070b10;
+  --color-panel: #0d141bd9; /* translucent so the backdrop sketches show faintly */
+  --color-panel-2: #141e27;
+  --color-line: #1d2a35;
+  --color-fg: #e6f1f5;
+  --color-muted: #7c909e;
+  --color-accent: #22d3ee;
+  --color-accent-2: #facc15;
+  --color-great: #22d3ee;
+  --color-good: #facc15;
+  --color-slow: #fb923c;
+  --color-bad: #f87171;
 }
 
 html, body, #root { height: 100%; }
-body { background: var(--color-bg); color: var(--color-fg); font-family: "Segoe UI", system-ui, sans-serif; }
+
+body {
+  color: var(--color-fg);
+  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  background:
+    radial-gradient(1200px 600px at -10% -20%, #22d3ee14, transparent 60%),
+    radial-gradient(900px 500px at 110% 120%, #facc1510, transparent 60%),
+    var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection { background: #22d3ee40; }
+
+/* Slim, quiet scrollbars */
+* { scrollbar-width: thin; scrollbar-color: #1d2a35 transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: #1d2a35; border-radius: 8px; }
+*::-webkit-scrollbar-thumb:hover { background: #2a3b49; }
+
+:focus-visible { outline: 2px solid #22d3ee80; outline-offset: 2px; }
+
+/* ---- Backdrop sketches ---- */
+.sketch {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 2.4s ease;
+}
+.sketch.is-active { opacity: 1; }
+.sketch.is-active svg { animation: sketch-drift 16s ease-in-out both; }
+.sketch.is-active .stroke-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: sketch-draw 4.5s ease-out forwards;
+}
+
+@keyframes sketch-draw { to { stroke-dashoffset: 0; } }
+@keyframes sketch-drift {
+  from { transform: translate3d(0, 6px, 0) scale(0.985); }
+  to   { transform: translate3d(0, -6px, 0) scale(1.015); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sketch { transition-duration: 0.6s; }
+  .sketch.is-active svg, .sketch.is-active .stroke-draw { animation: none; stroke-dashoffset: 0; }
+}

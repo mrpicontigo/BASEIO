@@ -26,11 +26,11 @@ export function AskBox({ installed, onInstall }: { installed: Set<string>; onIns
   };
 
   return (
-    <section className="rounded-lg border border-accent/40 bg-accent/5 p-4">
-      <p className="mb-2 text-sm font-medium">What do you want to use AI for?</p>
+    <section className="rounded-2xl border border-accent-2/25 bg-gradient-to-br from-accent/10 via-panel to-accent-2/10 p-6 backdrop-blur-md">
+      <p className="mb-3 text-lg font-semibold tracking-tight">What do you want to use AI for?</p>
       <div className="flex gap-2">
         <input
-          className="flex-1 rounded border border-line bg-panel-2 px-3 py-2 text-sm outline-none focus:border-accent"
+          className="flex-1 rounded-xl border border-line bg-bg/60 px-4 py-2.5 text-sm outline-none transition focus:border-accent/60"
           placeholder="e.g. help me write code on my laptop"
           value={text}
           maxLength={2000}
@@ -42,7 +42,7 @@ export function AskBox({ installed, onInstall }: { installed: Set<string>; onIns
       {!res && (
         <div className="mt-2 flex flex-wrap gap-2">
           {EXAMPLES.map((ex) => (
-            <button key={ex} onClick={() => ask(ex)} className="rounded-full border border-line px-3 py-1 text-xs text-muted hover:text-fg">
+            <button key={ex} onClick={() => ask(ex)} className="rounded-full border border-line px-3 py-1 text-xs text-muted transition hover:border-accent-2/50 hover:text-accent-2">
               {ex}
             </button>
           ))}
@@ -54,14 +54,14 @@ export function AskBox({ installed, onInstall }: { installed: Set<string>; onIns
           <div className="flex flex-wrap gap-1.5 text-xs">
             {res.intent.understood.length === 0
               ? <span className="text-muted">No specific needs recognised, showing general models.</span>
-              : res.intent.understood.map((u) => <span key={u} className="rounded bg-panel-2 px-2 py-0.5 text-muted">{u}</span>)}
+              : res.intent.understood.map((u) => <span key={u} className="rounded-full bg-accent-2/10 px-2.5 py-0.5 text-accent-2">{u}</span>)}
           </div>
           {res.recommendations.length === 0 && (
             <p className="text-sm text-muted">No model in the catalogue matches all of that and runs well here. Try loosening a requirement.</p>
           )}
           <div className="grid gap-2 md:grid-cols-3">
             {res.recommendations.slice(0, 3).map((r) => (
-              <div key={r.variant.tag} className="rounded border border-line bg-panel p-3">
+              <div key={r.variant.tag} className="rounded-xl border border-line bg-panel p-4">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-medium">{r.model_name}</span>
                   <TierBadge tier={r.compatibility.tier} />
